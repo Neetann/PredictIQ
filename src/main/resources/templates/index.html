@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Utilization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1/dist/chartjs-adapter-luxon.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 10px;
+            text-align: center;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            background-color: #333;
+        }
+
+        nav a {
+            color: white;
+            padding: 14px 20px;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        nav a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Forecast of KPI Utilization (CPU, Memory, Temp) </h1>
+    <canvas id="utilizationChart" width="900" height="400"></canvas>
+
+    <script>
+        fetch('/api/utilization')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('utilizationChart').getContext('2d');
+
+                // Extract unique timestamps sorted ascending
+                const timestampsSet = new Set();
+                Object.values(data).forEach(arr => {
+                    arr.forEach(p => timestampsSet.add(p.timestamp));
+                });
+                const timestamps = Array.from(timestampsSet).sort();
+
+                // Build datasets array for Chart.js
+                const datasets = Object.entries(data).map(([cardName, points], index) => {
+                    // Map timestamp to utilization, fallback to null if missing
+                    const utilizationByTimestamp = {};
+                    points.forEach(p => utilizationByTimestamp[p.timestamp] = p.utilization);
+
+                    return {
+                        label: cardName,
+                        data: timestamps.map(ts => utilizationByTimestamp[ts] ?? null),
+                        borderColor: `hsl(${index * 60}, 70%, 50%)`,
+                        fill: false,
+                        tension: 0.1
+                    };
+                });
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: timestamps,
+                        datasets: datasets
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                            	type: 'time',
+                                time: {
+                                    unit: 'day', // <-- aggregate ticks by day
+                                    displayFormats: {
+                                        day: 'yyyy-MM-dd' // <-- show only the date
+                                    }
+
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Utilization (%)'
+                                },
+                                min: 0,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Cards Utilization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1/dist/chartjs-adapter-luxon.min.js"></script>
+</head>
+<body>
+    <h1>Cards Utilization Over Time</h1>
+    <canvas id="utilizationChart" width="900" height="400"></canvas>
+
+    <script>
+        fetch('/api/utilization')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('utilizationChart').getContext('2d');
+
+                // Extract unique timestamps sorted ascending
+                const timestampsSet = new Set();
+                Object.values(data).forEach(arr => {
+                    arr.forEach(p => timestampsSet.add(p.timestamp));
+                });
+                const timestamps = Array.from(timestampsSet).sort();
+
+                // Build datasets array for Chart.js
+                const datasets = Object.entries(data).map(([cardName, points], index) => {
+                    // Map timestamp to utilization, fallback to null if missing
+                    const utilizationByTimestamp = {};
+                    points.forEach(p => utilizationByTimestamp[p.timestamp] = p.utilization);
+
+                    return {
+                        label: cardName,
+                        data: timestamps.map(ts => utilizationByTimestamp[ts] ?? null),
+                        borderColor: `hsl(${index * 60}, 70%, 50%)`,
+                        fill: false,
+                        tension: 0.1
+                    };
+                });
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: timestamps,
+                        datasets: datasets
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Utilization (%)'
+                                },
+                                min: 0,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            });
+    </script>
+</body>
+</html>
