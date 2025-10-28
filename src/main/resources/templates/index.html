@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network Utilization</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1/dist/chartjs-adapter-luxon.min.js"></script>
@@ -56,24 +57,65 @@
 </head>
 
 <body>
-    <h1>Forecast of KPI Utilization (CPU, Memory, Temp) </h1>
-    <canvas id="utilizationChart" width="900" height="400"></canvas>
+	<header>
+        <h1>Welcome to My Home Page</h1>
+    </header>
+    <nav>
+        <a href="#home">Home</a>
+    </nav>
+   <main style="
+  display: grid;
+  grid-template-columns: 1fr 1fr;  /* two equal columns */
+  gap: 20px;                       /* space between columns */
+  align-items: center;              /* vertically center content */
+	">
+  <div>
+    <canvas id="utilizationChart" style="width:100%; height:300px;"></canvas>
+  </div>
+  
+  <div>
+    <h2>System Utilization Summary</h2>
+    <p>
+      This chart shows the predicted utilization trends for CPU, Memory, 
+      and Temperature over time. The forecast helps identify performance bottlenecks early.
+    </p>
+    <span id = "messages"></span>
+  </div>
 
     <script>
         fetch('/api/utilization')
             .then(response => response.json())
             .then(data => {
+            	var datapoints = data.dataPoints;
+            	var messages = data.messages;
+            	if (messages.length > 0) {
+            		  const msgContainer = document.getElementById("messages");
+            		  msgContainer.innerHTML = ""; // clear old content
+
+            		  messages.forEach(msg => {
+            		    // Highlight the percentage (e.g. "62.70%") and node (e.g. "leaf1")
+            		    const formattedMsg = msg
+            		      .replace(/(\d+(\.\d+)?%)/g, '<span style="color: orange; font-weight: bold;">$1</span>')
+            		      .replace(/(node\s+\w+)/gi, '<span style="color: #4CAF50; font-weight: bold;">$1</span>');
+
+            		    // Add each message in its own line (using <div>)
+            		    const div = document.createElement("div");
+            		    div.innerHTML = formattedMsg;
+            		    msgContainer.appendChild(div);
+            		  });
+            		}
+
                 const ctx = document.getElementById('utilizationChart').getContext('2d');
 
                 // Extract unique timestamps sorted ascending
                 const timestampsSet = new Set();
-                Object.values(data).forEach(arr => {
+                Object.values(datapoints).forEach(arr => {
                     arr.forEach(p => timestampsSet.add(p.timestamp));
                 });
                 const timestamps = Array.from(timestampsSet).sort();
 
                 // Build datasets array for Chart.js
-                const datasets = Object.entries(data).map(([cardName, points], index) => {
+                const datasets = Object.entries(datapoints).map(([cardName, points], index) => {
                     // Map timestamp to utilization, fallback to null if missing
                     const utilizationByTimestamp = {};
                     points.forEach(p => utilizationByTimestamp[p.timestamp] = p.utilization);

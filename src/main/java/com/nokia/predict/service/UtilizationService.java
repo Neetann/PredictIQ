@@ -12,6 +12,7 @@ import org.springframework.util.CollectionUtils;
 
 import com.nokia.predict.model.KpiPortUtilization;
 import com.nokia.predict.model.KpiPortUtilizationRepository;
+import com.nokia.predict.model.UtilizationDO;
 import com.nokia.predict.model.UtilizationPoint;
 import com.nokia.predict.utils.CpuForecastWithCommonsMath;
 import com.nokia.predict.utils.OutagePredictor;
@@ -20,10 +21,11 @@ import com.nokia.predict.utils.TeamsNotifier;
 public class UtilizationService {
 	@Autowired KpiPortUtilizationRepository repository;
 
-	public Map<String, List<UtilizationPoint>> getTimedDataPoints() {
+	public UtilizationDO getTimedDataPoints() {
+		UtilizationDO doObject = new UtilizationDO();
+		LocalDateTime endTime = LocalDateTime.now();
+		LocalDateTime startTime = endTime.minusDays(10);
 		
-		LocalDateTime startTime = LocalDateTime.now();
-		LocalDateTime endTime = startTime.plusDays(4);
 		List<String> ofns = repository.findDistinctOfn();
 		List<String> outageNodes = new ArrayList<String>();
 		
@@ -66,7 +68,9 @@ public class UtilizationService {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-		return dbStatsData;
+			doObject.setDataPoints(dbStatsData);
+			doObject.setMessages(outageNodes);
+		return doObject;
 				
 	}
 
